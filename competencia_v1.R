@@ -66,8 +66,6 @@ plot(cv.lasso)
 
 y.predict = predict(lasso.model, x.sample.scale)
 
-y.predict
-
 mse(y.predict, y.sample)
 
 continuous_transformation <- function(x) {
@@ -77,19 +75,34 @@ continuous_transformation <- function(x) {
 y.transf.predict <- unlist(lapply(as.vector(y.predict), function(x) continuous_transformation(x) ), use.names = FALSE)
 y.transf.sample <- unlist(lapply(y.sample, function(x) continuous_transformation(x) ), use.names = FALSE)
 
+# Lasso - Accuracy
+
 lasso.accuracy <- accuracy(y.transf.sample, y.transf.predict)
 
-#
-
-as.vector(y.predict)
-
-
-dt[, -1] <- lapply(dt[, -1], function(x) str_replace(x," ","_"))
 # Ridge - GLM 
-
 
 cv.ridge <- cv.glmnet(x.sample.scale, y.sample, family = "gaussian", nfold = 5, type.measure = "mse", parallel = TRUE, alpha = 0)
 ridge.model <- glmnet(x.sample.scale, y.sample, family = "gaussian", lambda = cv.lasso$lambda.min, alpha = 0)
+
+plot(cv.ridge)
+
+y.predict.ridge = predict(ridge.model, x.sample.scale)
+
+mse(y.predict.ridge, y.sample)
+
+continuous_transformation <- function(x) {
+  if (x <= -1) {0} else {1}
+}
+
+y.transf.predict.ridge <- unlist(lapply(as.vector(y.predict.ridge), function(x) continuous_transformation(x) ), use.names = FALSE)
+y.transf.sample.ridge <- unlist(lapply(y.sample, function(x) continuous_transformation(x) ), use.names = FALSE)
+
+# Ridge - Accuracy
+
+ridge.accuracy <- accuracy(y.transf.sample.ridge, y.transf.predict.ridge)
+
+ridge.accuracy
+
 
 # Juntando el resultado de los coeficientes
 
