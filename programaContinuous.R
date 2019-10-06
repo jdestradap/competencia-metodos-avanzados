@@ -20,7 +20,7 @@ continuous_transformation <- function(x) {
 
 df <- gettingTheData("datacontinuousstudents.csv")
 
-seleccion<-c(23,25,31)
+seleccion<-c(23,31)
 
 y.all <- df[,2]
 x.all <- scale(df[,seleccion+2])
@@ -54,7 +54,7 @@ modelo.final <-bicbma.model2$condpostmean
 
 df.modelo.final <- gettingTheData("datacontinuousstudents_eval.csv")
 
-seleccion.modelo.final <-c(23,25,31)
+seleccion.modelo.final <-c(23,31)
 
 y.modelo.all <- df[,2]
 x.modelo.final <- df.modelo.final[,seleccion.modelo.final+2]
