@@ -70,7 +70,10 @@ x.modelo.final<-sweep(x.modelo.final, 2, x.all.sd, FUN="/")
 scaled.x.modelo.final<-data.matrix(x.modelo.final)
 
 # Modelo
-y.predict.modelo.final <- exp(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean)
+y.predict.modelo.final <- exp(cbind(matrix(1,dim(scaled.x.modelo.final)[1],1),scaled.x.modelo.final) %*% bicbma.model2$condpostmean)
+
+print("betas")
+print(bicbma.model2$condpostmean)
 y.predict.modelo.final <- unlist(lapply(y.predict.bicbma22,round))
 
 mse.modelo.final <- mse(y.predict.modelo.final, y.modelo.all)

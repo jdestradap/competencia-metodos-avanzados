@@ -10,8 +10,6 @@ library(BMS)
 ###########################################################################
 # Creando modelo con variables seleccionadas segun metodología del equipo #
 ###########################################################################
-
-
 gettingTheData <- function(filePath) {
   data <- na.omit(read.table(filePath, header = TRUE, sep = ","))
 }
