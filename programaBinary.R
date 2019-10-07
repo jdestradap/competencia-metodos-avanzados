@@ -19,7 +19,7 @@ gettingTheData <- function(filePath) {
 
 df <- gettingTheData("databinarystudents.csv")
 
-seleccion<-c(17,18,23)
+seleccion<-c(17,18)
 
 y.all <- df[,2]
 x.all <- scale(df[,seleccion+2])
@@ -51,7 +51,7 @@ modelo.final <-bicbma.model2$condpostmean
 
 df.modelo.final <- gettingTheData("databinarystudents_eval.csv")
 
-seleccion.modelo.final <-c(17,18,23)
+seleccion.modelo.final <-c(17,18)
 
 y.modelo.all <- df[,2]
 x.modelo.final <- df.modelo.final[,seleccion.modelo.final+2]

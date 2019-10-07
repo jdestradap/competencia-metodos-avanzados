@@ -61,8 +61,30 @@ ui <- fluidPage(
                          choices = c(Comma = ",",
                                      Semicolon = ";",
                                      Tab = "\t"),
-                         selected = ",")
+                         selected = ","),
             
+            
+            ####
+            tags$hr(),
+            # Input: Select a file ----
+            fileInput("file3", "Seleccionar archivo binario",
+                      multiple = FALSE,
+                      accept = c("text/csv",
+                                 "text/comma-separated-values,text/plain",
+                                 ".csv")),
+            
+            # Horizontal line ----
+            tags$hr(),
+            
+            # Input: Checkbox if file has header ----
+            checkboxInput("header3", "Header", TRUE),
+            
+            # Input: Select separator ----
+            radioButtons("sep3", "Separator",
+                         choices = c(Comma = ",",
+                                     Semicolon = ";",
+                                     Tab = "\t"),
+                         selected = ",")
         ),
         
         # Main panel for displaying outputs ----
@@ -70,10 +92,10 @@ ui <- fluidPage(
             
             # Output: Data file ----
             tableOutput("conteo"),
-            tableOutput("continuo")
+            tableOutput("continuo"),
+            tableOutput("binario")
             
         )
-        
     )
 )
 
@@ -94,8 +116,7 @@ server <- function(input, output) {
             {
                 df <- read.csv(input$file1$datapath,
                                header = input$header,
-                               sep = input$sep,
-                               quote = input$quote)
+                               sep = input$sep)
                 # medias x.all
                 seleccion<-c(3,25)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
@@ -116,9 +137,8 @@ server <- function(input, output) {
         )
         
         colnames(resultados.eval) <- c("datos de validación - conteo")
-        rownames(resultados.eval) <- c("Obseravaciones", "MSE", "Accuracy")
+        rownames(resultados.eval) <- c("Observaciones", "MSE", "Accuracy")
         resultados.eval
-        
     })
     
     output$continuo <- renderTable(rownames = TRUE, colnames = TRUE,{
@@ -128,8 +148,7 @@ server <- function(input, output) {
             {
                 df <- read.csv(input$file2$datapath,
                                header = input$header2,
-                               sep = input$sep2,
-                               quote = input$quote2)
+                               sep = input$sep2)
                 # medias x.all
                 seleccion<-c(23,31)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
@@ -150,11 +169,39 @@ server <- function(input, output) {
         )
         
         colnames(resultados.eval) <- c("datos de validación - continuo")
-        rownames(resultados.eval) <- c("Obseravaciones", "MSE", "Accuracy")
+        rownames(resultados.eval) <- c("Observaciones", "MSE", "Accuracy")
         resultados.eval
         
     })
     
+    output$binario <- renderTable(rownames = TRUE, colnames = TRUE,{
+        req(input$file3)
+        
+        tryCatch(
+            {
+                df.tmp <- read.csv(input$file3$datapath,
+                               header = input$header3,
+                               sep = input$sep3)
+                
+                df = as.data.frame(lapply(df.tmp, na.omit))
+                
+                seleccion<-c(17,18)
+                x.all.mean <- apply(df[,seleccion+2], 2, mean)
+                # varianzas x.all
+                x.all.sd <- apply(df[,seleccion+2], 2, sd)
+                resultado.modelo <- modelo.binario(df, seleccion)
+                resultados.eval <- evaluando.modelo.binario(resultado.modelo, df, x.all.mean, x.all.sd, seleccion)
+            },
+            error = function(e) {
+                # return a safeError if a parsing error occurs
+                stop(safeError(e))
+            }
+        )
+        
+        colnames(resultados.eval) <- c("datos de validación - binario")
+        rownames(resultados.eval) <- c("Observaciones", "Accuracy", "AUC")
+        resultados.eval
+    })
 }
 
 ## Utils
@@ -174,7 +221,6 @@ continuous_transformation <- function(x) {
 # validation            150 1.353333     0.66
 #
 ##############################################
-
 
 modelo.conteo <- function(data.archivo, seleccion) {
     seleccion<-c(3,25)
@@ -209,10 +255,8 @@ evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion,
     print("x.all.sd")
     x.all.sd
     
-    seleccion.modelo.final <-c(3,25)
-    
     y.modelo.all <- data.archivo.evaluacion[,2]
-    x.modelo.final <- data.archivo.evaluacion[,seleccion.modelo.final+2]
+    x.modelo.final <- data.archivo.evaluacion[,seleccion+2]
     
     # Se estandariza los datos con las medias y varianzas dadas
     
@@ -236,13 +280,7 @@ evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion,
     print("acc.modelo.final")
     print(acc.modelo.final)
     
-    
-    #resultados.data <- rbind(c(nrow(df),msebicbma2,accbicbma2), c(nrow(df.modelo.final),mse.modelo.final,acc.modelo.final))
-    #resultados.data <- c(nrow(data.modelo.conteo),mse.modelo.final, acc.modelo.final)
-    
     resultados.data <- rbind(nrow(data.archivo.evaluacion),mse.modelo.final,acc.modelo.final)
-    
-    print("resultados.data")
     
     print(resultados.data)
     
@@ -286,10 +324,8 @@ evaluando.modelo.continuo <- function(data.modelo.continuo, data.archivo.evaluac
     print("x.all.sd")
     x.all.sd
     
-    seleccion.modelo.final <-c(23,31)
-    
     y.modelo.all <- data.archivo.evaluacion[,2]
-    x.modelo.final <- data.archivo.evaluacion[,seleccion.modelo.final+2]
+    x.modelo.final <- data.archivo.evaluacion[,seleccion +2]
     
     # Se estandariza los datos con las medias y varianzas dadas
     
@@ -320,6 +356,74 @@ evaluando.modelo.continuo <- function(data.modelo.continuo, data.archivo.evaluac
     
     print(resultados.data)
     
+    resultados.data
+}
+
+##############################################
+#
+# Obseravaciones  Accuracy  AUC
+# train                 150 0.7333333 0.73
+# validation            150 0.7333333 0.73
+#
+##############################################
+
+modelo.binario <- function(data.archivo, seleccion) {
+    y.all <- data.archivo[,2]
+    x.all <- scale(data.archivo[,seleccion+2])
+    
+    bicbma.model2<-bic.glm(x.all, y.all, glm.family = binomial(link = "logit"),maxCol=33,
+                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
+                           factor.type = TRUE, factor.prior.adjust = FALSE, 
+                           occam.window = TRUE, call = NULL)
+    
+    y.predict.bicbma22 <- 1/(1+(exp(-(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean)))) # lo que ajusta es logaritmo natual de Y. Por la familia, px / 1-px
+    y.predict.bicbma22 <- unlist(lapply(y.predict.bicbma22,round))
+    
+    accbicbma2 <- accuracy(y.all, y.predict.bicbma22)
+    roc.bicbma22 <- roc(y.all, y.predict.bicbma22,quiet=TRUE)
+    rocbicbma2<-roc.bicbma22$auc
+    
+    bicbma.model2$condpostmean
+}
+
+evaluando.modelo.binario <- function(data.modelo.binario, data.archivo.evaluacion, x.all.mean, x.all.sd, seleccion) {
+    print("Estos son los betas")
+    print(data.modelo.binario)
+    
+    print("x.all.mean")
+    print(x.all.mean)
+    
+    print("x.all.sd")
+    print(x.all.sd)
+    
+    print("data.archivo.evaluacion")
+    print(data.archivo.evaluacion)
+    
+    y.modelo.all <- data.archivo.evaluacion[,2]
+    x.modelo.final <- data.archivo.evaluacion[,seleccion+2]
+    
+    # Se estandariza los datos con las medias y varianzas dadas
+    
+    x.modelo.final<-sweep(x.modelo.final, 2, x.all.mean, FUN="-")
+    x.modelo.final<-sweep(x.modelo.final, 2, x.all.sd, FUN="/")
+    scaled.x.modelo.final<-data.matrix(x.modelo.final)
+    
+    print("scaled.x.modelo.final")
+    print(scaled.x.modelo.final)
+    
+    # Modelo
+    
+    y.predict.modelo.final <- 1/(1+(exp(-(cbind(matrix(1,dim(scaled.x.modelo.final)[1],1),scaled.x.modelo.final) %*% data.modelo.binario)))) # lo que ajusta es logaritmo natual 
+    print("y.predict.modelo.final:")
+    print(y.predict.modelo.final)
+    
+    y.predict.modelo.final <- unlist(lapply(y.predict.modelo.final,round))
+    
+    acc.modelo.final <- accuracy(y.modelo.all, y.predict.modelo.final)
+    roc.modelo.final <- roc(y.modelo.all, y.predict.modelo.final, quiet=TRUE)
+    roc.modelo.final.auc <- roc.modelo.final$auc    
+    
+    resultados.data <- rbind(nrow(data.archivo.evaluacion),acc.modelo.final,roc.modelo.final.auc)
     resultados.data
 }
 
