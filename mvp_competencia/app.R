@@ -97,15 +97,16 @@ server <- function(input, output) {
                                sep = input$sep,
                                quote = input$quote)
                 # medias x.all
+                seleccion<-c(3,25)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
                 x.all.sd <- apply(df[,seleccion+2], 2, sd)
                 
                 
-                resultado.modelo <- modelo.conteo(df)
+                resultado.modelo <- modelo.conteo(df, seleccion)
                 
-                resultados.eval <- evaluando.modelo.conteo(resultado.modelo, df, x.all.mean, x.all.sd)
+                resultados.eval <- evaluando.modelo.conteo(resultado.modelo, df, x.all.mean, x.all.sd, seleccion)
             
             },
             error = function(e) {
@@ -130,15 +131,16 @@ server <- function(input, output) {
                                sep = input$sep2,
                                quote = input$quote2)
                 # medias x.all
+                seleccion<-c(23,31)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
                 x.all.sd <- apply(df[,seleccion+2], 2, sd)
                 
                 
-                resultado.modelo <- modelo.continuo(df)
+                resultado.modelo <- modelo.continuo(df, seleccion)
                 
-                resultados.eval <- evaluando.modelo.continuo(resultado.modelo, df, x.all.mean, x.all.sd)
+                resultados.eval <- evaluando.modelo.continuo(resultado.modelo, df, x.all.mean, x.all.sd, seleccion)
                 
             },
             error = function(e) {
@@ -164,12 +166,17 @@ continuous_transformation <- function(x) {
     if (x <= -1) {0} else {1}
 }
 
-###########################################################################
-# Creando modelo con variables seleccionadas segun metodología del equipo #
-###########################################################################
+##############################################
+#
+# resultados.data
+# Obseravaciones      MSE Accuracy
+# train                 150 1.353333     0.66
+# validation            150 1.353333     0.66
+#
+##############################################
 
 
-modelo.conteo <- function(data.archivo) {
+modelo.conteo <- function(data.archivo, seleccion) {
     seleccion<-c(3,25)
     
     y.all <- data.archivo[,2]
@@ -192,7 +199,7 @@ modelo.conteo <- function(data.archivo) {
     bicbma.model2$condpostmean
 }
 
-evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion, x.all.mean, x.all.sd) {
+evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion, x.all.mean, x.all.sd, seleccion) {
     print("Estos son los betas")
     print(data.modelo.conteo)
     
@@ -215,7 +222,7 @@ evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion,
     
     # Modelo
     y.predict.modelo.final <- exp(cbind(matrix(1,dim(scaled.x.modelo.final)[1],1),scaled.x.modelo.final) %*% data.modelo.conteo)
-    y.predict.modelo.final <- unlist(lapply(y.predict.bicbma22,round))
+    y.predict.modelo.final <- unlist(lapply(y.predict.modelo.final,round))
     
     mse.modelo.final <- mse(y.predict.modelo.final, y.modelo.all)
     
@@ -250,9 +257,7 @@ evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion,
 #
 ##############################################
 
-modelo.continuo <- function(data.archivo) {
-    seleccion<-c(23,31)
-    
+modelo.continuo <- function(data.archivo, seleccion) {
     y.all <- data.archivo[,2]
     x.all <- scale(data.archivo[,seleccion+2])
     
@@ -271,7 +276,7 @@ modelo.continuo <- function(data.archivo) {
     bicbma.model2$condpostmean
 }
 
-evaluando.modelo.continuo <- function(data.modelo.continuo, data.archivo.evaluacion, x.all.mean, x.all.sd) {
+evaluando.modelo.continuo <- function(data.modelo.continuo, data.archivo.evaluacion, x.all.mean, x.all.sd, seleccion) {
     print("Estos son los betas")
     print(data.modelo.continuo)
     
