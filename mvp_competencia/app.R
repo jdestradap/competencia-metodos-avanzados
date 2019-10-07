@@ -114,11 +114,13 @@ server <- function(input, output) {
         # having a comma separator causes `read.csv` to error
         tryCatch(
             {
-                df <- read.csv(input$file1$datapath,
-                               header = input$header,
-                               sep = input$sep)
+                df.tmp <- read.csv(input$file1$datapath,
+                                   header = input$header,
+                                   sep = input$sep)
+                
+                df = as.data.frame(lapply(df.tmp, na.omit))
                 # medias x.all
-                seleccion<-c(3,25)
+                seleccion<-c(3, 24, 25)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
@@ -146,11 +148,13 @@ server <- function(input, output) {
         
         tryCatch(
             {
-                df <- read.csv(input$file2$datapath,
-                               header = input$header2,
-                               sep = input$sep2)
+                df.tmp <- read.csv(input$file2$datapath,
+                                   header = input$header2,
+                                   sep = input$sep2)
+                
+                df = as.data.frame(lapply(df.tmp, na.omit))
                 # medias x.all
-                seleccion<-c(23,31)
+                seleccion<-c(23,25,31)
                 x.all.mean <- apply(df[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
