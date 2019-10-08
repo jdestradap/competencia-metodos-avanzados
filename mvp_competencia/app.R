@@ -101,7 +101,6 @@ ui <- fluidPage(
 
 # Define server logic to read selected file ----
 server <- function(input, output) {
-    
     output$conteo <- renderTable(rownames = TRUE, colnames = TRUE,{
         
         # input$file1 will be NULL initially. After the user selects
@@ -114,20 +113,29 @@ server <- function(input, output) {
         # having a comma separator causes `read.csv` to error
         tryCatch(
             {
+                # La base de datos debe tener los 32 regresores antes de subir el archivo. Y corresponden a C1, C2, C3
+                df.training.tmp <- read.csv("datacountstudents.csv",
+                                   header = input$header,
+                                   sep = input$sep)
+                
+                df.training = as.data.frame(lapply(df.training.tmp, na.omit))
+                
                 df.tmp <- read.csv(input$file1$datapath,
                                    header = input$header,
                                    sep = input$sep)
                 
                 df = as.data.frame(lapply(df.tmp, na.omit))
+                
                 # medias x.all
                 seleccion<-c(3, 24, 25)
-                x.all.mean <- apply(df[,seleccion+2], 2, mean)
+                
+                ## Se deben cargar los dos archivos, se saca el mean y estandar
+                x.all.mean <- apply(df.training[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
-                x.all.sd <- apply(df[,seleccion+2], 2, sd)
-                
-                
-                resultado.modelo <- modelo.conteo(df, seleccion)
+                x.all.sd <- apply(df.training[,seleccion+2], 2, sd)
+
+                resultado.modelo <- modelo.conteo(df.training, seleccion)
                 
                 resultados.eval <- evaluando.modelo.conteo(resultado.modelo, df, x.all.mean, x.all.sd, seleccion)
             
@@ -148,6 +156,13 @@ server <- function(input, output) {
         
         tryCatch(
             {
+                df.training.tmp <- read.csv("datacontinuousstudents.csv",
+                                            header = input$header2,
+                                            sep = input$sep2)
+                
+                df.training = as.data.frame(lapply(df.training.tmp, na.omit))
+                
+                
                 df.tmp <- read.csv(input$file2$datapath,
                                    header = input$header2,
                                    sep = input$sep2)
@@ -155,10 +170,10 @@ server <- function(input, output) {
                 df = as.data.frame(lapply(df.tmp, na.omit))
                 # medias x.all
                 seleccion<-c(23,25,31)
-                x.all.mean <- apply(df[,seleccion+2], 2, mean)
+                x.all.mean <- apply(df.training[,seleccion+2], 2, mean)
                 
                 # varianzas x.all
-                x.all.sd <- apply(df[,seleccion+2], 2, sd)
+                x.all.sd <- apply(df.training[,seleccion+2], 2, sd)
                 
                 
                 resultado.modelo <- modelo.continuo(df, seleccion)
@@ -183,16 +198,22 @@ server <- function(input, output) {
         
         tryCatch(
             {
+                df.training.tmp <- read.csv("databinarystudents.csv",
+                                            header = input$header3,
+                                            sep = input$sep3)
+                
+                df.training = as.data.frame(lapply(df.training.tmp, na.omit))
+                
                 df.tmp <- read.csv(input$file3$datapath,
                                header = input$header3,
                                sep = input$sep3)
                 
                 df = as.data.frame(lapply(df.tmp, na.omit))
                 
-                seleccion<-c(17,18)
-                x.all.mean <- apply(df[,seleccion+2], 2, mean)
+                seleccion<-c(17,18,23,24)
+                x.all.mean <- apply(df.training[,seleccion+2], 2, mean)
                 # varianzas x.all
-                x.all.sd <- apply(df[,seleccion+2], 2, sd)
+                x.all.sd <- apply(df.training[,seleccion+2], 2, sd)
                 resultado.modelo <- modelo.binario(df, seleccion)
                 resultados.eval <- evaluando.modelo.binario(resultado.modelo, df, x.all.mean, x.all.sd, seleccion)
             },
@@ -227,15 +248,12 @@ continuous_transformation <- function(x) {
 ##############################################
 
 modelo.conteo <- function(data.archivo, seleccion) {
-    seleccion<-c(3,25)
-    
     y.all <- data.archivo[,2]
     x.all <- scale(data.archivo[,seleccion+2])
     
     bicbma.model2<-bic.glm(x.all, y.all, glm.family = poisson(link = "log"),maxCol=33,
-                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                           factor.type = TRUE, factor.prior.adjust = FALSE, 
-                           occam.window = TRUE, call = NULL)
+                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, 
+                           occam.window = TRUE)
     
     y.predict.bicbma22 <- exp(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean)
     y.predict.bicbma22 <- unlist(lapply(y.predict.bicbma22,round))
@@ -254,10 +272,10 @@ evaluando.modelo.conteo <- function(data.modelo.conteo, data.archivo.evaluacion,
     print(data.modelo.conteo)
     
     print("x.all.mean")
-    x.all.mean
+    print(x.all.mean)
     
     print("x.all.sd")
-    x.all.sd
+    print(x.all.sd)
     
     y.modelo.all <- data.archivo.evaluacion[,2]
     x.modelo.final <- data.archivo.evaluacion[,seleccion+2]
@@ -304,9 +322,7 @@ modelo.continuo <- function(data.archivo, seleccion) {
     x.all <- scale(data.archivo[,seleccion+2])
     
     bicbma.model2<-bic.glm(x.all, y.all, glm.family = gaussian(link = "identity"),maxCol=33,
-                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                           factor.type = TRUE, factor.prior.adjust = FALSE, 
-                           occam.window = TRUE, call = NULL)
+                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
     
     y.predict.bicbma22 <- cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean
     msebicbma2 <- mse(y.predict.bicbma22, y.all)
@@ -376,9 +392,7 @@ modelo.binario <- function(data.archivo, seleccion) {
     x.all <- scale(data.archivo[,seleccion+2])
     
     bicbma.model2<-bic.glm(x.all, y.all, glm.family = binomial(link = "logit"),maxCol=33,
-                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                           factor.type = TRUE, factor.prior.adjust = FALSE, 
-                           occam.window = TRUE, call = NULL)
+                           strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
     
     y.predict.bicbma22 <- 1/(1+(exp(-(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean)))) # lo que ajusta es logaritmo natual de Y. Por la familia, px / 1-px
     y.predict.bicbma22 <- unlist(lapply(y.predict.bicbma22,round))
@@ -425,7 +439,7 @@ evaluando.modelo.binario <- function(data.modelo.binario, data.archivo.evaluacio
     
     acc.modelo.final <- accuracy(y.modelo.all, y.predict.modelo.final)
     roc.modelo.final <- roc(y.modelo.all, y.predict.modelo.final, quiet=TRUE)
-    roc.modelo.final.auc <- roc.modelo.final$auc    
+    roc.modelo.final.auc <- roc.modelo.final$auc
     
     resultados.data <- rbind(nrow(data.archivo.evaluacion),acc.modelo.final,roc.modelo.final.auc)
     resultados.data
