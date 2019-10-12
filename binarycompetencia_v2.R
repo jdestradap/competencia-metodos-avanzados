@@ -7,6 +7,7 @@ library(reshape2)
 library(BMA)
 library(BMS)
 library(pROC)
+library(xlsx)
 
 # Function to extract a prepare the data
 
@@ -27,14 +28,15 @@ hist(df[,2])
 
 # analisis de correlaciones
 
-M <- cor(df[,c(2,seleccion+2)])
+#M <- cor(df[,c(2,seleccion+2)])
+M <- cor(df[,seleccion+2])
 col<- colorRampPalette(c("Blue"))
 corrplot::corrplot(M, method = "color", order="hclust", col=RColorBrewer::brewer.pal(n=8, name="Blues"))
 
 corrplot::corrplot.mixed(M, lower.col = "black", number.cex = .7)
 
 
-cormat <- round(cor(df[,c(2,seleccion+2)]),2)
+cormat <- round(cor(df[,seleccion+2]),2)
 cormat[lower.tri(cormat,diag=TRUE)] <- NA
 head(cormat)
 melted_cormat <- melt(cormat)
@@ -137,9 +139,7 @@ roc.result[3]<-roc.elasticnet$auc
 # BMA bic - GLM - En construcción
 
 bicbma.model<-bic.glm(x.sample.scale, y.sample, glm.family = binomial(link = "logit"),maxCol=33,
-                      strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                      factor.type = TRUE, factor.prior.adjust = FALSE, 
-                      occam.window = TRUE, call = NULL)
+                      strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
 
 summary(bicbma.model)
 imageplot.bma(bicbma.model)
@@ -179,10 +179,7 @@ bicbma.coef2<- bicbma.model$condpostmean
 lasso.coef@x
 lasso.coef@i
 
-nombres<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost","PIP_BMA")
 models<-matrix(0,6,length(seleccion)+1)
-namesmodels<-c("intercept",names(x.sample))
-colnames(models)<-namesmodels
 models<-data.frame(models)
 models[1,lasso.coef@i+1]<-lasso.coef@x
 models[2,ridge.coef@i+1]<-ridge.coef@x
@@ -190,8 +187,10 @@ models[3,elasticnet.coef@i+1]<-elasticnet.coef@x
 models[4,]<-bicbma.model$postmean
 models[5,]<-bicbma.model$condpostmean
 models[6,]<-c(100,bicbma.model$probne0)
-models<-add_column(models, modelos=nombres, .before = 1)
-models<- models %>% mutate(AUC=auc.result,ROC=roc.result)
+colnames(models)<-c("inter",names(x.sample))
+models<- models %>% mutate(Acc=auc.result,Roc=roc.result)
+rownames(models)<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost","PIP_BMA")
+models
 
 
 x<-cbind(lasso.coef,ridge.coef,elasticnet.coef,bicbma.coef,bicbma.coef2)
@@ -246,13 +245,19 @@ roc.validation[4]<-roc.bicbma.validation$auc
 roc.bicbma2.validation <- roc(y.validation, y.predict.bicbma2.validation,quiet=TRUE)
 roc.validation[5]<-roc.bicbma2.validation$auc
 
+models.validation<- data.frame(cbind(round(auc.validation,2),round(roc.validation,2)))
+colnames(models.validation)<-c('Accuracy','ROC')
+rownames(models.validation)<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost")
 
-nombres.validation<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost")
-models.validation<- data.frame(cbind(nombres.validation,auc.validation,roc.validation))
-colnames(models.validation)<-c('modelos','AUC','ROC')
-
+models.validation<-data.frame(models.validation)
+models<-format(models,digits=3)
+models<-data.frame(t(models))
 models
 models.validation
+
+write.xlsx(models, file = "empty1.xlsx",
+           sheetName = "USA-ARRESTS", append = FALSE)
+
 
 # ante diferentes corridas los modelos son muy diferentes e igualmente los resultados.
 
@@ -270,9 +275,7 @@ for(i in 1:5) {
   x.sample.scale <- scale(x.sample)
   
   bicbma.model<-bic.glm(x.sample.scale, y.sample, glm.family = binomial(link = "logit"),maxCol=33,
-                        strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                        factor.type = TRUE, factor.prior.adjust = FALSE, 
-                        occam.window = TRUE, call = NULL)
+                        strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
   
   pip[,i]<-bicbma.model$probne0
 }
@@ -283,17 +286,21 @@ colnames(pip)<-c("PIP1","PIP2","PIP3","PIP4","PIP5","conteo")
 rownames(pip)<-names(x.sample)
 pip
 
+write.xlsx(pip, file = "empty2.xlsx",
+           sheetName = "USA-ARRESTS", append = FALSE)
+
 # variables seleccionadas
 
-seleccion<-c(1,14,17,18,23,24)
+seleccion<-c(1,4,10,17,18,20,23,24) #primer corrida
+#seleccion<-c(17,18,23,24) #2da corrida solo PIP > 70
 
-M <- cor(df[,c(2,seleccion+2)])
+M <- cor(df[,seleccion+2])
 col<- colorRampPalette(c("Blue"))
 corrplot::corrplot(M, method = "color", order="hclust", col=RColorBrewer::brewer.pal(n=8, name="Blues"))
 
 corrplot::corrplot.mixed(M, lower.col = "black", number.cex = .7)
 
-cormat <- round(cor(df[,c(2,seleccion+2)]),2)
+cormat <- round(cor(df[,seleccion+2]),2)
 cormat[lower.tri(cormat,diag=TRUE)] <- NA
 head(cormat)
 melted_cormat <- melt(cormat)
@@ -308,15 +315,19 @@ y.all <- df[,2]
 x.all <- scale(df[,seleccion+2])
 
 bicbma.model.pre<-bic.glm(x.all, y.all, glm.family = binomial(link = "logit"),maxCol=33,
-                          strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                          factor.type = TRUE, factor.prior.adjust = FALSE, 
-                          occam.window = TRUE, call = NULL)
+                          strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
 
 summary(bicbma.model.pre)
 
-#  variables definitivas PIP > 90  ------------------------------------------
+cv.ridge.pre <- cv.glmnet(x.all, y.all, family = "gaussian", nfold = 5, type.measure = "mse", parallel = TRUE, alpha = 0,standardize = FALSE)
+ridge.model.pre <- glmnet(x.all, y.all, family = "gaussian", lambda = cv.ridge.pre$lambda.min, alpha = 0,standardize = FALSE)
 
-seleccion<-c(17,18,23)
+coef(ridge.model.pre)
+
+#  variables definitivas  ------------------------------------------
+
+seleccion<-c(17,18,23,24)
+#seleccion<-c(1,4,10,17,18,20,23,24)
 
 #### Cross Validation modelos definitivos
 
@@ -372,7 +383,7 @@ auc.test.ridge<-matrix(0,fold,1)
 roc.test.ridge<-matrix(0,fold,1)
 
 cv.ridge2 <- cv.glmnet(x.all, y.all, family = "binomial", nfold = fold, type.measure = "auc", parallel = TRUE, alpha = 0,standardize = FALSE)
-ridge.model2 <- glmnet(x.all, y.all, family = "binomial", lambda = cv.ridge2$lambda.min, alpha = 1,standardize = FALSE)
+ridge.model2 <- glmnet(x.all, y.all, family = "binomial", lambda = cv.ridge2$lambda.min, alpha = 0,standardize = FALSE)
 
 y.predict.ridge2 <- as.numeric(predict(ridge.model2, x.all, type = "class"))
 aucridge <- accuracy(y.all,y.predict.ridge2)
@@ -460,9 +471,7 @@ roc.test.bicbma<-matrix(0,fold,1)
 roc.test.bicbma2<-matrix(0,fold,1)
 
 bicbma.model2<-bic.glm(x.all, y.all, glm.family = binomial(link = "logit"),maxCol=33,
-                       strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                       factor.type = TRUE, factor.prior.adjust = FALSE, 
-                       occam.window = TRUE, call = NULL)
+                       strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
 
 y.predict.bicbma2 <-  1/(1+(exp(-(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$postmean)))) # %*% porcentaje matricial: Y estimado - parametros esperados. Coger matriz x por su respectivo betas y sumelo y pongale 1.
 y.predict.bicbma2 <- unlist(lapply(y.predict.bicbma2,round))
@@ -497,9 +506,7 @@ for(i in 1:fold) {
   
   
   bicbma.model.train<-bic.glm(x.train, y.train, glm.family = binomial(link = "logit"),maxCol=33,
-                              strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, dispersion = NULL, 
-                              factor.type = TRUE, factor.prior.adjust = FALSE, 
-                              occam.window = TRUE, call = NULL)
+                              strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
   
   y.predict.bicbma.test <-  1/(1+(exp(-(cbind(matrix(1,dim(x.test)[1],1),x.test) %*% bicbma.model.train$postmean)))) # %*% porcentaje matricial: Y estimado - parametros esperados. Coger matriz x por su respectivo betas y sumelo y pongale 1.
   y.predict.bicbma.test <- unlist(lapply(y.predict.bicbma.test,round))
@@ -516,27 +523,24 @@ for(i in 1:fold) {
 
 # resultados tabla final
 
-
 modelfinal<-c(auclasso,aucridge,aucelasticnet,aucbicbma,aucbicbma2,roclasso,rocridge,rocelasticnet,rocbicbma,rocbicbma2)
 modelscv<-cbind(auc.test.lasso, auc.test.ridge, auc.test.elasticnet, auc.test.bicbma, auc.test.bicbma2,roc.test.lasso, roc.test.ridge, roc.test.elasticnet, roc.test.bicbma, roc.test.bicbma2)
 meanmodelscv<-apply(modelscv, 2, mean)
 sdmodelscv<-apply(modelscv, 2, sd)
-tablafinal<-rbind(modelfinal,modelscv,meanmodelscv,sdmodelscv)
+tablafinal<-rbind(round(modelfinal,2),round(modelscv,2),round(meanmodelscv,2),round(sdmodelscv,2))
 rownames(tablafinal)<-c("Model_all","CV1","CV2","CV3","CV4","CV5","meanCV","sdCV")
-colnames(tablafinal)<-c("aucL","aucR","aucE","aucB","aucB2","rocL","rocR","rocE","rocB","rocB2")
+colnames(tablafinal)<-c("accL","accR","accE","accB","accB2","rocL","rocR","rocE","rocB","rocB2")
 
 #resultados finales
 tablafinal
+tablafinal<-t(tablafinal)
 
 #modelos finales ------------------------------------------------------------
 lasso.coef <- coef(lasso.model2)
 ridge.coef <- coef(ridge.model2)
 elasticnet.coef <- coef(elasticnet.model2)
 
-nombres<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost","PIP_BMA")
 modelsf<-matrix(0,6,length(seleccion)+1)
-namesmodels<-c("intercept",names(df[,seleccion+2]))
-colnames(modelsf)<-namesmodels
 modelsf<-data.frame(modelsf)
 modelsf[1,lasso.coef@i+1]<-lasso.coef@x
 modelsf[2,ridge.coef@i+1]<-ridge.coef@x
@@ -544,7 +548,9 @@ modelsf[3,elasticnet.coef@i+1]<-elasticnet.coef@x
 modelsf[4,]<-bicbma.model2$postmean
 modelsf[5,]<-bicbma.model2$condpostmean
 modelsf[6,]<-c(100,bicbma.model2$probne0)
-modelsf<-add_column(modelsf, modelos=nombres, .before = 1)
+colnames(modelsf)<-c("intercept",names(df[,seleccion+2]))
+rownames(modelsf)<-c("Lasso","Ridge","Elasticnet","BMA_post","BMA_condpost","PIP_BMA")
+modelsf
 
 summary(bicbma.model2)
 
@@ -554,3 +560,80 @@ x.all.mean <- apply(df[,seleccion+2], 2, mean)
 # varianzas x.all
 x.all.sd <- apply(df[,seleccion+2], 2, sd)
 
+tablafinal
+
+
+########################################################################
+
+# BMA bic - GLM - test
+
+auc.test.bicbma<-matrix(0,fold,1)
+auc.test.bicbma2<-matrix(0,fold,1)
+
+auc.test.total.bicbma2<-matrix(0,fold,100)
+roc.test.total.bicbma2<-matrix(0,fold,100)
+
+roc.test.bicbma<-matrix(0,fold,1)
+roc.test.bicbma2<-matrix(0,fold,1)
+
+bicbma.model2<-bic.glm(x.all, y.all, glm.family = binomial(link = "logit"),maxCol=33,
+                       strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
+
+y.predict.bicbma2 <-  1/(1+(exp(-(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$postmean)))) # %*% porcentaje matricial: Y estimado - parametros esperados. Coger matriz x por su respectivo betas y sumelo y pongale 1.
+y.predict.bicbma2 <- unlist(lapply(y.predict.bicbma2,round))
+aucbicbma <- accuracy(y.all, y.predict.bicbma2)
+roc.bicbma2 <- roc(y.all, y.predict.bicbma2,quiet=TRUE)
+rocbicbma<-roc.bicbma2$auc
+
+y.predict.bicbma22 <- 1/(1+(exp(-(cbind(matrix(1,dim(x.all)[1],1),x.all) %*% bicbma.model2$condpostmean)))) # lo que ajusta es logaritmo natual de Y. Por la familia, px / 1-px
+y.predict.bicbma22 <- unlist(lapply(y.predict.bicbma22,round))
+aucbicbma2 <- accuracy(y.all, y.predict.bicbma22)
+roc.bicbma22 <- roc(y.all, y.predict.bicbma22,quiet=TRUE)
+rocbicbma2<-roc.bicbma22$auc
+
+for (j in 1:100){
+  folding.bma <- modelr::crossv_kfold(df[,c(2,seleccion+2)],k=fold)
+  for(i in 1:fold) {
+    idx.train<-folding.bma$train[[i]]$idx
+    x.train<-df[idx.train,seleccion+2]
+    x.test<-df[-idx.train,seleccion+2]
+    
+    y.train<-df[idx.train,2]
+    y.test<-df[-idx.train,2]
+    
+    x.train.mean <- apply(x.train, 2, mean)
+    x.train.variances <- apply(x.train, 2, sd)
+    
+    x.train<-sweep(x.train, 2, x.train.mean, FUN="-")
+    x.train<-sweep(x.train, 2, x.train.variances, FUN="/")
+    x.train<-data.matrix(x.train)
+    
+    x.test<-sweep(x.test, 2, x.train.mean, FUN="-")
+    x.test<-sweep(x.test, 2, x.train.variances, FUN="/")
+    x.test<-data.matrix(x.test)
+    
+    
+    bicbma.model.train<-bic.glm(x.train, y.train, glm.family = binomial(link = "logit"),maxCol=33,
+                                strict = FALSE, OR = 20, OR.fix = 2, nbest = 10, occam.window = TRUE)
+    
+    y.predict.bicbma.test <-  1/(1+(exp(-(cbind(matrix(1,dim(x.test)[1],1),x.test) %*% bicbma.model.train$postmean)))) # %*% porcentaje matricial: Y estimado - parametros esperados. Coger matriz x por su respectivo betas y sumelo y pongale 1.
+    y.predict.bicbma.test <- unlist(lapply(y.predict.bicbma.test,round))
+    auc.test.bicbma[i] <- accuracy(y.test, y.predict.bicbma.test)
+    roc.bicbma.test <- roc(y.test, y.predict.bicbma.test,quiet=TRUE)
+    roc.test.bicbma[i]<-roc.bicbma.test$auc
+    
+    y.predict.bicbma2.test <- 1/(1+(exp(-(cbind(matrix(1,dim(x.test)[1],1),x.test) %*% bicbma.model.train$condpostmean)))) # lo que ajusta es logaritmo natual de Y. Por la familia, px / 1-px
+    y.predict.bicbma2.test <- unlist(lapply(y.predict.bicbma2.test,round))
+    auc.test.bicbma2[i] <- accuracy(y.test, y.predict.bicbma2.test)
+    auc.test.total.bicbma2[i,j]<-accuracy(y.test, y.predict.bicbma2.test)
+    roc.bicbma2.test <- roc(y.test, y.predict.bicbma2.test,quiet=TRUE)
+    roc.test.bicbma2[i]<-roc.bicbma2.test$auc
+    roc.test.total.bicbma2[i,j]<-roc.bicbma2.test$auc
+  }
+}
+
+tablafinal2.1<-cbind(round(aucbicbma2,3),round(mean(colMeans(auc.test.total.bicbma2)),3),round(sd(colMeans(auc.test.total.bicbma2)),3),100)
+tablafinal2.2<-cbind(round(rocbicbma2,3),round(mean(colMeans(roc.test.total.bicbma2)),3),round(sd(colMeans(roc.test.total.bicbma2)),3),100)
+tablafinal3<-rbind(tablafinal2.1,tablafinal2.2)
+rownames(tablafinal3)<-c("BMACondpost_Acc","BMACondpost_ROC")
+colnames(tablafinal3)<-c("Model_all","meanCV","sdCV","#CV_5folds")
